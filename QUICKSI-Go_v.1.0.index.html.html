@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUICKSY-Go — Bots que filtran. IA que decide.</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg:      '#0a0a0a',
+            surface: '#111111',
+            card:    '#161616',
+            border:  '#1f1f1f',
+            accent:  '#00e5a0',
+            accenth: '#00ffb3',
+            muted:   '#5a5a6a',
+            light:   '#e8e8f0',
+          },
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['DM Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ── Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #0a0a0a;
+      color: #e8e8f0;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 256px;
+      opacity: 0.35;
+    }
+
+    /* ── Glow blob behind hero ── */
+    .hero-glow {
+      position: absolute;
+      top: -120px; left: 50%;
+      transform: translateX(-50%);
+      width: 720px; height: 480px;
+      background: radial-gradient(ellipse at center, rgba(0,229,160,.13) 0%, transparent 70%);
+      pointer-events: none;
+      filter: blur(40px);
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #1f1f1f; border-radius: 4px; }
+
+    /* ── Navbar ── */
+    .navbar {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(16px) saturate(160%);
+      background: rgba(10,10,10,.78);
+      border-bottom: 1px solid #1f1f1f;
+    }
+
+    /* ── Chat input ── */
+    .chat-input {
+      background: #111111;
+      border: 1.5px solid #1f1f1f;
+      border-radius: 16px;
+      transition: border-color .25s, box-shadow .25s;
+      caret-color: #00e5a0;
+    }
+    .chat-input:focus-within {
+      border-color: #00e5a0;
+      box-shadow: 0 0 0 3px rgba(0,229,160,.1);
+    }
+    .chat-input input {
+      background: transparent;
+      outline: none;
+      color: #e8e8f0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      width: 100%;
+    }
+    .chat-input input::placeholder { color: #5a5a6a; }
+
+    /* ── Send button ── */
+    .btn-send {
+      background: #00e5a0;
+      color: #0a0a0a;
+      border-radius: 10px;
+      width: 44px; height: 44px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s, transform .15s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-send:hover { background: #00ffb3; transform: scale(1.06); }
+
+    /* ── Chip ── */
+    .chip {
+      background: #161616;
+      border: 1px solid #1f1f1f;
+      border-radius: 999px;
+      padding: .45rem 1rem;
+      font-size: .82rem;
+      color: #a0a0b8;
+      cursor: pointer;
+      transition: border-color .2s, color .2s, background .2s;
+      white-space: nowrap;
+    }
+    .chip:hover {
+      border-color: #00e5a0;
+      color: #00e5a0;
+      background: rgba(0,229,160,.06);
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    /* ── Testimonial card ── */
+    .t-card {
+      background: #111111;
+      border: 1px solid #1f1f1f;
+      border-radius: 18px;
+      padding: 1.5rem;
+      transition: border-color .25s, transform .25s;
+    }
+    .t-card:hover { border-color: rgba(0,229,160,.35); transform: translateY(-3px); }
+
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #1f1f1f;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Contact pill buttons ── */
+    .pill-btn {
+      display: inline-flex; align-items: center; gap: .6rem;
+      border-radius: 999px;
+      padding: .85rem 1.6rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: .93rem;
+      transition: transform .2s, box-shadow .2s, filter .2s;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+    }
+    .pill-btn:hover { transform: translateY(-2px); filter: brightness(1.12); }
+
+    .pill-linkedin { background: #0a66c2; color: #fff; }
+    .pill-whatsapp { background: #25D366; color: #fff; }
+    .pill-gmail    { background: #EA4335; color: #fff; }
+
+    /* ── Profile card ── */
+    .profile-photo {
+      width: 100px; height: 100px;
+      border-radius: 14px;
+      background: #111;
+      border: 1.5px solid #1f1f1f;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .social-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: #161616;
+      border: 1px solid #1f1f1f;
+      display: flex; align-items: center; justify-content: center;
+      color: #a0a0b8;
+      font-size: .85rem;
+      transition: border-color .2s, color .2s, background .2s;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .social-icon:hover { border-color: #00e5a0; color: #00e5a0; background: rgba(0,229,160,.06); }
+
+    /* ── Divider line ── */
+    .divider { border-top: 1px solid #1a1a1a; }
+
+    /* ── Fade-in on load ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp .65s ease both; }
+    .delay-1 { animation-delay: .12s; }
+    .delay-2 { animation-delay: .24s; }
+    .delay-3 { animation-delay: .36s; }
+
+    /* ── Bot bubble animation ── */
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(0,229,160,.35); }
+      70%  { box-shadow: 0 0 0 8px rgba(0,229,160,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,229,160,0); }
+    }
+    .bot-badge { animation: pulse-ring 2.4s ease infinite; }
+
+    /* ── Reply bubble ── */
+    .reply-bubble {
+      background: #161616;
+      border: 1px solid #1f1f1f;
+      border-radius: 12px 12px 12px 4px;
+      padding: .7rem 1rem;
+      max-width: 340px;
+      font-size: .85rem;
+      color: #a0a0b8;
+      display: none;
+    }
+    .reply-bubble.visible { display: block; animation: fadeUp .3s ease both; }
+
+    /* chat message user */
+    .user-bubble {
+      background: rgba(0,229,160,.1);
+      border: 1px solid rgba(0,229,160,.2);
+      border-radius: 12px 12px 4px 12px;
+      padding: .6rem 1rem;
+      max-width: 320px;
+      font-size: .88rem;
+      align-self: flex-end;
+      color: #e8e8f0;
+      animation: fadeUp .3s ease both;
+    }
+  </style>
+</head>
+<body class="relative overflow-x-hidden">
+
+<nav class="navbar">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-3 group">
+      <div class="logo-q w-8 h-8 group-hover:scale-110 transition-transform duration-200">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 15 H85 V85 H50 V95 L40 85 H15 V15 Z" fill="#00e5a0"/>
+          <path d="M75 25 H80 V30 H75 V25 Z" fill="#0a0a0a"/>
+          <path d="M70 20 H75 V25 H70 V20 Z" fill="#0a0a0a"/>
+          <path d="M65 15 H70 V20 H65 V15 Z" fill="#0a0a0a"/>
+          <path d="M75 15 H85 V25 Z" fill="#0a0a0a"/>
+          <path d="M25 75 H20 V70 H25 V75 Z" fill="#0a0a0a"/>
+          <path d="M30 80 H25 V75 H30 V80 Z" fill="#0a0a0a"/>
+          <path d="M35 85 H30 V80 H35 V85 Z" fill="#0a0a0a"/>
+          <path d="M25 85 H15 V75 Z" fill="#0a0a0a"/>
+        </svg>
+      </div>
+      <span class="font-display font-800 text-lg tracking-tight text-light">QUICKSY<span class="text-accent">-Go</span></span>
+    </a>
+    <div class="hidden md:flex items-center gap-6 text-sm text-muted font-body">
+      <a href="#hero" class="hover:text-light transition-colors">Inicio</a>
+      <a href="#testimonios" class="hover:text-light transition-colors">Testimonios</a>
+      <a href="#contacto" class="hover:text-light transition-colors">Contacto</a>
+      <a href="#equipo" class="hover:text-light transition-colors">Equipo</a>
+    </div>
+    <a href="#hero" class="hidden md:inline-flex items-center gap-2 text-sm font-medium bg-accent text-bg px-4 py-2 rounded-xl hover:bg-accenth transition-all duration-200 hover:-translate-y-px font-body">
+      Probar ahora <i class="fa-solid fa-arrow-right text-xs"></i>
+    </a>
+  </div>
+</nav>
+
+<section id="hero" class="relative min-h-[90vh] flex flex-col items-center justify-center px-5 pt-20 pb-28 overflow-hidden">
+  <div class="hero-glow"></div>
+  <div class="fade-up mb-6 flex items-center gap-2 bg-card border border-border rounded-full px-4 py-1.5 text-xs text-muted font-body">
+    <span class="w-2 h-2 rounded-full bg-accent bot-badge inline-block"></span>
+    IA conversacional B2B · Automatización inteligente
+  </div>
+  <h1 class="fade-up delay-1 section-title text-center text-4xl md:text-6xl lg:text-7xl leading-tight max-w-4xl mx-auto mb-5 relative z-10">
+    Bots que filtran.<br/>
+    IA que decide.<br/>
+    <span class="text-accent underline decoration-accent/40 decoration-4 underline-offset-8">Ingresos que crecen.</span>
+  </h1>
+  <p class="fade-up delay-2 text-muted text-base md:text-lg text-center mb-10 max-w-xl font-body">
+    Explícanos tu problema y te mostramos cómo automatizarlo:
+  </p>
+  <div class="fade-up delay-3 w-full max-w-2xl relative z-10" id="chatArea">
+    <div id="messagesFeed" class="flex flex-col gap-3 mb-4 min-h-0"></div>
+    <div class="flex items-start gap-3 mb-4">
+      <div class="avatar bg-accent/10 border border-accent/20">
+        <i class="fa-solid fa-robot text-accent text-sm"></i>
+      </div>
+      <div class="reply-bubble visible" id="greetBubble">
+        ¡Hola! Soy tu asistente QUICKSY. Cuéntame tu mayor reto de ventas o atención al cliente 👇
+      </div>
+    </div>
+    <div class="chat-input flex items-center gap-3 px-4 py-3">
+      <i class="fa-regular fa-comment-dots text-muted text-base flex-shrink-0"></i>
+      <input type="text" id="chatInput" placeholder="Escribe tu problema aquí..." autocomplete="off" onkeydown="handleKey(event)" />
+      <button class="btn-send" onclick="sendMessage()" aria-label="Enviar">
+        <i class="fa-solid fa-paper-plane text-sm"></i>
+      </button>
+    </div>
+    <div class="flex flex-wrap gap-2 mt-4 justify-center" id="chips">
+      <button class="chip" onclick="useChip(this)"><i class="fa-brands fa-whatsapp mr-1.5"></i>Pierdo horas en WhatsApp</button>
+      <button class="chip" onclick="useChip(this)"><i class="fa-solid fa-filter mr-1.5"></i>Prospectos no calificados</button>
+      <button class="chip" onclick="useChip(this)"><i class="fa-regular fa-calendar-check mr-1.5"></i>Agendar citas automático</button>
+    </div>
+  </div>
+</section>
+
+<section id="testimonios" class="divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-end justify-between mb-12 flex-wrap gap-4">
+      <h2 class="section-title text-3xl md:text-4xl">Testimonios</h2>
+      <p class="text-muted text-sm font-body">Empresas que ya escalan con QUICKSY-Go</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="t-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="avatar"><i class="fa-solid fa-building-columns text-muted text-sm"></i></div>
+          <div><p class="text-sm font-semibold text-light font-body">Firma Legal Olvera</p><p class="text-xs text-muted">Abogados Corporativos</p></div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-xs mb-3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+        <p class="text-xs text-muted mt-3 font-body italic">"Redujimos el tiempo de calificación de leads en un 70%. El bot filtra automáticamente los casos que no son de nuestra competencia."</p>
+      </div>
+      <div class="t-card border-accent/20">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="avatar"><i class="fa-solid fa-house-chimney text-muted text-sm"></i></div>
+          <div><p class="text-sm font-semibold text-light font-body">Agencia Inmobiliaria Nexo</p><p class="text-xs text-muted">Bienes Raíces Premium</p></div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-xs mb-3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+        <p class="text-xs text-muted mt-3 font-body italic">"Las citas ahora se agendan solas. Nuestro equipo solo recibe notificaciones de prospectos con capacidad de compra real."</p>
+      </div>
+      <div class="t-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="avatar"><i class="fa-solid fa-chart-line text-muted text-sm"></i></div>
+          <div><p class="text-sm font-semibold text-light font-body">Consultora Vértice MX</p><p class="text-xs text-muted">Asesoría Financiera</p></div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-xs mb-3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i></div>
+        <p class="text-xs text-muted mt-3 font-body italic">"La IA clasifica y responde consultas sobre impuestos mientras dormimos. Increíble ROI desde el día uno."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contacto" class="divider px-5 py-24">
+  <div class="max-w-6xl mx-auto text-center">
+    <h2 class="section-title text-3xl md:text-4xl mb-3">Contáctanos</h2>
+    <p class="text-muted text-sm mb-12 font-body max-w-md mx-auto">Elige tu canal preferido y el sistema te enrutará para evaluación.</p>
+    <div class="flex flex-wrap items-center justify-center gap-4">
+      <a href="https://linkedin.com" target="_blank" rel="noopener" class="pill-btn pill-linkedin"><i class="fa-brands fa-linkedin text-base"></i>LinkedIn</a>
+      <a href="https://wa.me/521234567890" target="_blank" rel="noopener" class="pill-btn pill-whatsapp"><i class="fa-brands fa-whatsapp text-base"></i>WhatsApp</a>
+      <a href="mailto:contacto@quicksy-go.com" class="pill-btn pill-gmail"><i class="fa-solid fa-envelope text-base"></i>Gmail</a>
+    </div>
+  </div>
+</section>
+
+<section id="equipo" class="divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+    <div class="mb-4">
+      <p class="text-accent text-xs font-body tracking-widest uppercase mb-2">Sobre Nosotros</p>
+      <h2 class="section-title text-3xl md:text-4xl mb-2">Nuestro proyecto</h2>
+      <p class="text-muted text-sm font-body max-w-xl">Construimos la infraestructura de IA conversacional para empresas de alto valor. La simbiosis perfecta entre conocimiento de negocios y código.</p>
+    </div>
+    <div class="mt-4 mb-12 h-px bg-gradient-to-r from-accent/40 via-transparent to-transparent"></div>
+    <h3 class="section-title text-xl mb-8 text-light/70">Equipo</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <div class="t-card flex flex-col sm:flex-row gap-5">
+        <div class="profile-photo">
+          <img src="braulio.jpg" alt="Braulio Bonilla Cadena" class="w-full h-full object-cover rounded-[13px]">
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-display font-700 text-lg text-light">Braulio Bonilla Cadena</p>
+          <p class="text-accent text-xs mb-3 font-body">CEO & Lead Automation Architect</p>
+          <p class="text-xs text-muted font-body leading-relaxed mb-4">
+            Especialista en estructuración de datos y estrategia B2B. Con experiencia gerencial en Estrategia Comercial (Totalplay), estudios de Derecho en la UNAM y certificaciones en Data Analytics/Science por Google e IBM. Braulio no solo escribe código; diseña flujos comerciales que entienden el compliance corporativo y el valor real de tu tiempo facturable.
+          </p>
+          <div class="flex gap-2">
+            <a href="#" class="social-icon"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="#" class="social-icon"><i class="fa-brands fa-tiktok"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="t-card flex flex-col sm:flex-row gap-5 border-accent/20">
+        <div class="profile-photo relative">
+          <i class="fa-solid fa-microchip text-4xl text-accent/80 bot-badge rounded-full p-2"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-display font-700 text-lg text-light">Elizabeth</p>
+          <p class="text-accent text-xs mb-3 font-body">Core AI & Operaciones WhatsApp</p>
+          <p class="text-xs text-muted font-body leading-relaxed mb-4">
+            Sistema multi-agente autónomo. Mientras QUICKSY atiende de forma rápida y ligera el primer contacto en esta página web, Elizabeth gestiona el enrutamiento complejo, el análisis de datos y la atención directa en WhatsApp. Trabaja 24/7 sin descanso, asegurando que ningún prospecto de alto valor se enfríe.
+          </p>
+          <div class="flex gap-2">
+            <a href="#contacto" class="social-icon"><i class="fa-brands fa-whatsapp text-accent"></i></a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<footer class="divider py-8 px-5">
+  <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+    <a href="#" class="flex items-center gap-2 group">
+      <div class="logo-q w-6 h-6">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 15 H85 V85 H50 V95 L40 85 H15 V15 Z" fill="#00e5a0"/>
+          <path d="M75 25 H80 V30 H75 V25 Z" fill="#0a0a0a"/>
+          <path d="M70 20 H75 V25 H70 V20 Z" fill="#0a0a0a"/>
+          <path d="M65 15 H70 V20 H65 V15 Z" fill="#0a0a0a"/>
+          <path d="M75 15 H85 V25 Z" fill="#0a0a0a"/>
+          <path d="M25 75 H20 V70 H25 V75 Z" fill="#0a0a0a"/>
+          <path d="M30 80 H25 V75 H30 V80 Z" fill="#0a0a0a"/>
+          <path d="M35 85 H30 V80 H35 V85 Z" fill="#0a0a0a"/>
+          <path d="M25 85 H15 V75 Z" fill="#0a0a0a"/>
+        </svg>
+      </div>
+      <span class="font-display text-sm font-700 text-light/80">QUICKSY<span class="text-accent">-Go</span></span>
+    </a>
+    <p class="text-muted text-xs text-center font-body">Derechos reservados QUICKSY-Go 2026.</p>
+  </div>
+</footer>
+
+<script>
+  /* ── Chat interaction ── */
+  const feed = document.getElementById('messagesFeed');
+  const chatInput = document.getElementById('chatInput');
+  const botReplies = [
+    "¡Excelente! QUICKSY aquí. Analizando tu requerimiento... Te sugiero integrar a Elizabeth en tu WhatsApp para filtrar eso. ¿De qué tamaño es tu volumen de mensajes diarios?",
+    "Entendido. Nuestro ecosistema puede clasificar esos prospectos automáticamente y mandarlos a tu CRM o Excel. ¿Te gustaría que te pasemos directo con Elizabeth vía WhatsApp para una demostración real?",
+    "Perfecto. Voy a generar un resumen de tu caso. Toca el botón de WhatsApp abajo para continuar con Elizabeth, ella tiene tu contexto listo."
+  ];
+  let replyIdx = 0;
+
+  function addBubble(text, isUser) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex items-start gap-3 ' + (isUser ? 'flex-row-reverse' : '');
+    if (!isUser) {
+      wrapper.innerHTML = `<div class="avatar bg-accent/10 border border-accent/20 flex-shrink-0"><i class="fa-solid fa-robot text-accent text-sm"></i></div>`;
+    }
+    const bubble = document.createElement('div');
+    bubble.className = isUser ? 'user-bubble' : 'reply-bubble visible';
+    bubble.textContent = text;
+    wrapper.appendChild(bubble);
+    feed.appendChild(wrapper);
+    feed.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+
+  function sendMessage() {
+    const val = chatInput.value.trim();
+    if (!val) return;
+    chatInput.value = '';
+    addBubble(val, true);
+
+    const typingRow = document.createElement('div');
+    typingRow.className = 'flex items-start gap-3';
+    typingRow.innerHTML = `<div class="avatar bg-accent/10 border border-accent/20"><i class="fa-solid fa-robot text-accent text-sm"></i></div><div class="reply-bubble visible" style="padding:.5rem .9rem;"><span style="letter-spacing:.1em;color:#5a5a6a">···</span></div>`;
+    feed.appendChild(typingRow);
+    feed.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+    setTimeout(() => {
+      feed.removeChild(typingRow);
+      const reply = botReplies[replyIdx % botReplies.length];
+      replyIdx++;
+      addBubble(reply, false);
+      document.getElementById('greetBubble').style.display = 'none';
+    }, 1100);
+  }
+
+  function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
+  function useChip(btn) { chatInput.value = btn.textContent.trim(); sendMessage(); }
+
+  /* ── Scroll-reveal ── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.t-card, .pill-btn').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity .55s ease, transform .55s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>
