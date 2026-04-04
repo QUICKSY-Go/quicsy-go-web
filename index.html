@@ -503,29 +503,50 @@
     feed.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     const val = chatInput.value.trim();
     if (!val) return;
     chatInput.value = '';
+    
+    // Muestra el mensaje del usuario
     addBubble(val, true);
 
+    // Muestra los 3 puntitos de que QUICKSY está "pensando"
     const typingRow = document.createElement('div');
     typingRow.className = 'flex items-start gap-3';
     typingRow.innerHTML = `<div class="avatar bg-accent/10 border border-accent/20"><i class="fa-solid fa-robot text-accent text-sm"></i></div><div class="reply-bubble visible" style="padding:.5rem .9rem;"><span style="letter-spacing:.1em;color:#5a5a6a">···</span></div>`;
     feed.appendChild(typingRow);
     feed.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-    setTimeout(() => {
+    try {
+      // Aquí hacemos la magia: llamamos a tu cerebro en Python
+      const response = await fetch('http://127.0.0.1:5000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: val })
+      });
+      
+      const data = await response.json();
+      
+      // Borramos los puntitos de espera
       feed.removeChild(typingRow);
-      const reply = botReplies[replyIdx % botReplies.length];
-      replyIdx++;
-      addBubble(reply, false);
-      document.getElementById('greetBubble').style.display = 'none';
-    }, 1100);
+      
+      // Mostramos la respuesta real de Gemini
+      if(data.reply) {
+        addBubble(data.reply, false);
+      } else {
+        addBubble("Error en la matriz. Contacta a Elizabeth por WhatsApp.", false);
+      }
+      
+    } catch (error) {
+      feed.removeChild(typingRow);
+      addBubble("Mis servidores neuronales están en mantenimiento local. Toca el botón de WhatsApp abajo.", false);
+    }
+    
+    document.getElementById('greetBubble').style.display = 'none';
   }
-
-  function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
-  function useChip(btn) { chatInput.value = btn.textContent.trim(); sendMessage(); }
 
   /* ── Scroll-reveal ── */
   const observer = new IntersectionObserver((entries) => {
