@@ -1,0 +1,32 @@
+# render.yaml — Render deployment manifest for QUICKSY-Go backend
+# Docs: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: quicksy-go-backend
+    runtime: python
+    plan: free          # upgrade to starter/standard for production
+    region: oregon      # choose: oregon | frankfurt | singapore | ohio
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # set manually in Render dashboard (never commit keys)
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: GROQ_TEMPERATURE
+        value: "0.72"
+      - key: GROQ_MAX_TOKENS
+        value: "400"
+      - key: MAX_HISTORY_TURNS
+        value: "8"
+      - key: MAX_MESSAGE_CHARS
+        value: "2000"
+      - key: ALLOWED_ORIGINS
+        value: "*"           # replace with your frontend domain in production
+      - key: FLASK_DEBUG
+        value: "false"
