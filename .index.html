@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUICKSY-Go — Bots que filtran. IA que decide.</title>
+  <meta name="description" content="Automatización B2B con IA conversacional. Califica prospectos, agenda citas y cierra ventas — sin aumentar tu nómina." />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg:       '#070709',
+            surface:  '#0e0e12',
+            card:     '#13131a',
+            border:   '#1e1e28',
+            accent:   '#00e5a0',
+            accenth:  '#00ffb3',
+            muted:    '#52526a',
+            subtle:   '#8a8aaa',
+            light:    '#eeeef5',
+          },
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body:    ['DM Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ═══ RESET & BASE ═══ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #070709;
+      color: #eeeef5;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ═══ SCROLLBAR ═══ */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: #070709; }
+    ::-webkit-scrollbar-thumb { background: #1e1e28; border-radius: 3px; }
+
+    /* ═══ GRID BACKGROUND ═══ */
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(0,229,160,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,160,.022) 1px, transparent 1px);
+      background-size: 52px 52px;
+    }
+
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 999; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      background-size: 200px; opacity: .4;
+    }
+
+    /* ═══ NAVBAR ═══ */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(7,7,9,.82);
+      backdrop-filter: blur(22px) saturate(180%);
+      border-bottom: 1px solid rgba(30,30,40,.8);
+    }
+
+    /* ═══ GLASS ═══ */
+    .glass {
+      background: rgba(19,19,26,.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(30,30,40,.9);
+      border-radius: 18px;
+    }
+    .glass-strong {
+      background: rgba(14,14,18,.88);
+      backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid rgba(30,30,40,1);
+    }
+
+    /* animated gradient border */
+    .grad-border { position: relative; border-radius: 16px; overflow: hidden; }
+    .grad-border::before {
+      content: '';
+      position: absolute; inset: 0; border-radius: 16px; padding: 1px;
+      background: linear-gradient(135deg, rgba(0,229,160,.5) 0%, transparent 45%, transparent 55%, rgba(0,229,160,.2) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* ═══ HERO GLOWS ═══ */
+    .hero-glow-1 {
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 900px; height: 580px;
+      background: radial-gradient(ellipse, rgba(0,229,160,.09) 0%, transparent 65%);
+      pointer-events: none; filter: blur(55px);
+    }
+    .hero-glow-2 {
+      position: absolute; top: 30%; right: -80px;
+      width: 380px; height: 380px;
+      background: radial-gradient(ellipse, rgba(0,229,160,.05) 0%, transparent 70%);
+      pointer-events: none; filter: blur(60px);
+    }
+
+    /* ═══ PULSE DOT ═══ */
+    @keyframes ringPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0,229,160,.55); }
+      70%  { box-shadow: 0 0 0 7px rgba(0,229,160,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,229,160,0); }
+    }
+    .dot-pulse { animation: ringPulse 2.2s ease infinite; }
+
+    /* ═══ CHAT WIDGET ═══ */
+    .chat-wrap {
+      background: rgba(14,14,18,.92);
+      backdrop-filter: blur(24px);
+      border: 1px solid #1e1e28;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .chat-header {
+      background: rgba(19,19,26,.85);
+      border-bottom: 1px solid #1e1e28;
+      padding: .8rem 1.2rem;
+      display: flex; align-items: center; gap: .65rem;
+    }
+    .chat-messages {
+      padding: 1.2rem;
+      display: flex; flex-direction: column; gap: .9rem;
+      max-height: 320px; overflow-y: auto; scroll-behavior: smooth;
+    }
+    .chat-messages::-webkit-scrollbar { width: 2px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: #1e1e28; }
+    .chat-footer {
+      border-top: 1px solid #1e1e28;
+      padding: .85rem 1.2rem;
+      background: rgba(19,19,26,.6);
+    }
+
+    /* input row */
+    .chat-input-row {
+      display: flex; align-items: center; gap: .65rem;
+      background: #0e0e12;
+      border: 1.5px solid #1e1e28;
+      border-radius: 12px;
+      padding: .58rem .85rem;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .chat-input-row:focus-within {
+      border-color: #00e5a0;
+      box-shadow: 0 0 0 3px rgba(0,229,160,.07);
+    }
+    .chat-input-row input {
+      background: transparent; outline: none;
+      color: #eeeef5; width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .92rem;
+      caret-color: #00e5a0;
+    }
+    .chat-input-row input::placeholder { color: #52526a; }
+
+    /* bubbles */
+    @keyframes bubbleIn {
+      from { opacity:0; transform:translateY(9px) scale(.97); }
+      to   { opacity:1; transform:translateY(0)  scale(1); }
+    }
+    .bot-bubble {
+      background: rgba(19,19,26,.9);
+      border: 1px solid #1e1e28;
+      border-radius: 14px 14px 14px 4px;
+      padding: .7rem 1rem;
+      max-width: 86%;
+      font-size: .84rem; line-height: 1.58;
+      color: #a0a0be;
+      animation: bubbleIn .35s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .user-bubble {
+      background: rgba(0,229,160,.07);
+      border: 1px solid rgba(0,229,160,.17);
+      border-radius: 14px 14px 4px 14px;
+      padding: .65rem 1rem;
+      max-width: 80%;
+      font-size: .87rem; line-height: 1.52;
+      color: #eeeef5;
+      align-self: flex-end;
+      animation: bubbleIn .3s cubic-bezier(.34,1.56,.64,1) both;
+    }
+
+    /* typing dots */
+    @keyframes typingDot {
+      0%,60%,100% { transform:translateY(0); opacity:.4; }
+      30%          { transform:translateY(-4px); opacity:1; }
+    }
+    .typing-dot {
+      display:inline-block; width:5px; height:5px;
+      border-radius:50%; background:#52526a; margin:0 2px;
+    }
+    .typing-dot:nth-child(1) { animation: typingDot 1.2s ease .0s infinite; }
+    .typing-dot:nth-child(2) { animation: typingDot 1.2s ease .2s infinite; }
+    .typing-dot:nth-child(3) { animation: typingDot 1.2s ease .4s infinite; }
+
+    /* WhatsApp inject */
+    @keyframes waBounce {
+      0%,100% { transform:translateY(0) scale(1); }
+      50%      { transform:translateY(-3px) scale(1.02); }
+    }
+    .wa-inject-btn {
+      display: inline-flex; align-items: center; gap: .55rem;
+      background: linear-gradient(135deg, #25D366, #1db954);
+      color: #fff;
+      padding: .6rem 1.15rem;
+      border-radius: 999px;
+      font-size: .83rem; font-weight: 500;
+      text-decoration: none;
+      animation: waBounce 2.2s ease-in-out infinite;
+      box-shadow: 0 4px 18px rgba(37,211,102,.25);
+      transition: box-shadow .2s, filter .2s;
+    }
+    .wa-inject-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 28px rgba(37,211,102,.4);
+      animation-play-state: paused;
+    }
+
+    /* ═══ CHIPS ═══ */
+    .chip {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: rgba(19,19,26,.8); border: 1px solid #1e1e28;
+      border-radius: 999px; padding: .38rem .85rem;
+      font-size: .77rem; color: #8a8aaa;
+      cursor: pointer; white-space: nowrap;
+      transition: all .2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .chip:hover {
+      border-color: rgba(0,229,160,.45); color: #00e5a0;
+      background: rgba(0,229,160,.05);
+    }
+
+    /* ═══ TYPOGRAPHY ═══ */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      line-height: 1.06;
+    }
+    .eyebrow {
+      font-size: .68rem; letter-spacing: .18em;
+      text-transform: uppercase; color: #00e5a0;
+      font-family: 'DM Sans', sans-serif; font-weight: 500;
+    }
+
+    /* ═══ PROCESS ═══ */
+    .step-num {
+      font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800; line-height: 1;
+      background: linear-gradient(135deg, #00e5a0, rgba(0,229,160,.18));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .step-connector {
+      position: absolute; top: 26px; left: calc(100% + 1px);
+      width: calc(100% - 2px); height: 1px;
+      background: linear-gradient(90deg, rgba(0,229,160,.35), rgba(0,229,160,.04));
+    }
+
+    /* ═══ SOL / T CARDS ═══ */
+    .sol-card {
+      background: rgba(19,19,26,.72); border: 1px solid #1e1e28;
+      border-radius: 16px; padding: 1.45rem;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+    }
+    .sol-card:hover {
+      border-color: rgba(0,229,160,.28); transform: translateY(-4px);
+      box-shadow: 0 18px 44px rgba(0,0,0,.4), 0 0 0 1px rgba(0,229,160,.07);
+    }
+    .sol-icon {
+      width: 44px; height: 44px; border-radius: 11px;
+      background: rgba(0,229,160,.07); border: 1px solid rgba(0,229,160,.14);
+      display: flex; align-items: center; justify-content: center;
+      color: #00e5a0; font-size: 1.05rem; margin-bottom: .95rem;
+    }
+    .t-card {
+      background: rgba(19,19,26,.72); border: 1px solid #1e1e28;
+      border-radius: 16px; padding: 1.35rem;
+      transition: border-color .25s, transform .25s;
+    }
+    .t-card:hover { border-color: rgba(0,229,160,.22); transform: translateY(-3px); }
+    .t-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #1e1e28; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #52526a; font-size: .85rem;
+    }
+
+    /* ═══ PROFILE ═══ */
+    .profile-photo {
+      width: 94px; height: 94px; border-radius: 13px;
+      background: #1e1e28; border: 1.5px solid #2a2a38;
+      overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ═══ SOCIAL ICON ═══ */
+    .soc-icon {
+      width: 33px; height: 33px; border-radius: 8px;
+      background: rgba(19,19,26,.8); border: 1px solid #1e1e28;
+      display: flex; align-items: center; justify-content: center;
+      color: #52526a; font-size: .78rem;
+      transition: all .2s; text-decoration: none;
+    }
+    .soc-icon:hover { border-color: rgba(0,229,160,.38); color: #00e5a0; background: rgba(0,229,160,.06); }
+
+    /* ═══ PILL BUTTONS ═══ */
+    .pill-btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      border-radius: 999px; padding: .8rem 1.5rem;
+      font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: .9rem;
+      transition: transform .2s, filter .2s; cursor: pointer; text-decoration: none; border: none;
+    }
+    .pill-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .pill-linkedin { background:#0a66c2; color:#fff; box-shadow:0 4px 16px rgba(10,102,194,.2); }
+    .pill-whatsapp { background:#25D366; color:#fff; box-shadow:0 4px 16px rgba(37,211,102,.2); }
+    .pill-gmail    { background:#EA4335; color:#fff; box-shadow:0 4px 16px rgba(234,67,53,.2); }
+
+    /* ═══ DIVIDER ═══ */
+    .sec-divider { border-top: 1px solid rgba(30,30,40,.8); }
+
+    /* ═══ SEND BTN ═══ */
+    .btn-send {
+      width: 37px; height: 37px; border-radius: 9px;
+      background: #00e5a0; color: #070709; border: none;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; font-size: .78rem;
+      transition: background .2s, transform .15s;
+    }
+    .btn-send:hover  { background: #00ffb3; transform: scale(1.07); }
+    .btn-send:disabled { background: #1e1e28; color: #52526a; cursor: not-allowed; transform: none; }
+
+    /* ═══ HERO STAGGER ═══ */
+    @keyframes heroFadeUp {
+      from { opacity:0; transform:translateY(26px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .hero-0 { animation: heroFadeUp .7s ease .05s both; }
+    .hero-1 { animation: heroFadeUp .7s ease .18s both; }
+    .hero-2 { animation: heroFadeUp .7s ease .32s both; }
+    .hero-3 { animation: heroFadeUp .7s ease .45s both; }
+    .hero-4 { animation: heroFadeUp .7s ease .58s both; }
+
+    /* ═══ SCROLL REVEAL ═══ */
+    .reveal {
+      opacity: 0; transform: translateY(22px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: .1s; }
+    .reveal-d2 { transition-delay: .2s; }
+    .reveal-d3 { transition-delay: .3s; }
+    .reveal-d4 { transition-delay: .4s; }
+
+    /* ═══ STAT NUMS ═══ */
+    .stat-num {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      background: linear-gradient(135deg, #eeeef5, #8a8aaa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+  </style>
+</head>
+
+<body class="relative bg-grid">
+
+<!-- ════════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════════ -->
+<nav class="navbar">
+  <div class="max-w-6xl mx-auto px-5 h-[62px] flex items-center justify-between">
+
+    <a href="#" class="flex items-center gap-2.5 group flex-shrink-0">
+      <div class="w-8 h-8 group-hover:scale-110 transition-transform duration-200">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M85 15L15 15L15 85L40 85L50 95L50 85L85 85L85 15Z" fill="#00e5a0"/>
+          <path d="M65 30L70 30L70 35L65 35ZM60 25L65 25L65 30L60 30ZM55 20L60 20L60 25L55 25ZM65 20L80 20L80 35L65 35Z" fill="#070709"/>
+          <path d="M35 70L30 70L30 65L35 65ZM40 75L35 75L35 70L40 70ZM45 80L40 80L40 75L45 75ZM35 80L20 80L20 65L35 65Z" fill="#070709"/>
+        </svg>
+      </div>
+      <span class="font-display font-extrabold text-[15px] tracking-tight text-light">QUICKSY<span class="text-accent">-Go</span></span>
+    </a>
+
+    <!-- Desktop nav -->
+    <div class="hidden md:flex items-center gap-1">
+      <a href="#hero"        class="px-3 py-1.5 text-sm text-muted hover:text-light transition-colors rounded-lg hover:bg-white/[.035]">Inicio</a>
+      <a href="#soluciones"  class="px-3 py-1.5 text-sm text-muted hover:text-light transition-colors rounded-lg hover:bg-white/[.035]">Soluciones</a>
+      <a href="#proceso"     class="px-3 py-1.5 text-sm text-muted hover:text-light transition-colors rounded-lg hover:bg-white/[.035]">Proceso</a>
+      <a href="#testimonios" class="px-3 py-1.5 text-sm text-muted hover:text-light transition-colors rounded-lg hover:bg-white/[.035]">Clientes</a>
+      <a href="#equipo"      class="px-3 py-1.5 text-sm text-muted hover:text-light transition-colors rounded-lg hover:bg-white/[.035]">Equipo</a>
+    </div>
+
+    <a href="#hero" class="hidden md:inline-flex items-center gap-2 bg-accent text-bg text-sm font-medium px-4 py-2 rounded-xl hover:bg-accenth transition-all duration-200 hover:-translate-y-px flex-shrink-0 font-body">
+      Demo gratis <i class="fa-solid fa-arrow-right text-xs"></i>
+    </a>
+
+    <button id="menuBtn" class="md:hidden text-muted hover:text-light text-lg p-1.5 rounded-lg hover:bg-white/[.04] transition-all">
+      <i class="fa-solid fa-bars" id="menuIcon"></i>
+    </button>
+  </div>
+
+  <!-- Mobile menu -->
+  <div id="mobileMenu" class="md:hidden hidden border-t border-border px-5 pb-5 pt-3 flex flex-col gap-1 bg-surface/95 backdrop-blur-xl">
+    <a href="#hero"        onclick="closeMobileMenu()" class="py-2.5 px-3 text-sm text-subtle hover:text-light rounded-lg hover:bg-white/[.04] transition-all">Inicio</a>
+    <a href="#soluciones"  onclick="closeMobileMenu()" class="py-2.5 px-3 text-sm text-subtle hover:text-light rounded-lg hover:bg-white/[.04] transition-all">Soluciones</a>
+    <a href="#proceso"     onclick="closeMobileMenu()" class="py-2.5 px-3 text-sm text-subtle hover:text-light rounded-lg hover:bg-white/[.04] transition-all">Proceso</a>
+    <a href="#testimonios" onclick="closeMobileMenu()" class="py-2.5 px-3 text-sm text-subtle hover:text-light rounded-lg hover:bg-white/[.04] transition-all">Clientes</a>
+    <a href="#equipo"      onclick="closeMobileMenu()" class="py-2.5 px-3 text-sm text-subtle hover:text-light rounded-lg hover:bg-white/[.04] transition-all">Equipo</a>
+    <div class="pt-2 mt-1 border-t border-border">
+      <a href="#hero" onclick="closeMobileMenu()" class="flex items-center justify-center gap-2 bg-accent text-bg py-2.5 rounded-xl text-sm font-medium font-body">
+        Demo gratis <i class="fa-solid fa-arrow-right text-xs"></i>
+      </a>
+    </div>
+  </div>
+</nav>
+
+
+<!-- ════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════ -->
+<section id="hero" class="relative min-h-[92vh] flex flex-col items-center justify-center px-5 pt-16 pb-24 overflow-hidden">
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+
+  <!-- Eyebrow badge -->
+  <div class="hero-0 mb-7 flex items-center gap-2 glass px-4 py-1.5 text-[11px] text-muted font-body">
+    <span class="w-1.5 h-1.5 rounded-full bg-accent dot-pulse inline-block"></span>
+    IA conversacional B2B · Automatización inteligente
+    <span class="w-px h-3 bg-border mx-0.5"></span>
+    <span class="text-accent/80">Beta activa</span>
+  </div>
+
+  <!-- Headline -->
+  <h1 class="hero-1 section-title text-center text-[2.5rem] sm:text-[3.2rem] md:text-[4.2rem] lg:text-[5rem] max-w-5xl mx-auto mb-6 relative z-10">
+    Bots que filtran.<br/>
+    IA que decide.<br/>
+    <span class="text-accent">Ingresos que crecen.</span>
+  </h1>
+
+  <!-- Sub -->
+  <p class="hero-2 text-subtle text-sm md:text-base text-center mb-6 max-w-lg font-body leading-relaxed">
+    Automatiza la calificación de prospectos, el agendamiento y el seguimiento — sin aumentar tu nómina.
+  </p>
+
+  <!-- Stats -->
+  <div class="hero-3 flex flex-wrap items-center justify-center gap-6 mb-10">
+    <div class="text-center">
+      <p class="stat-num text-2xl">70%</p>
+      <p class="text-[11px] text-muted font-body mt-0.5">Menos tiempo en leads</p>
+    </div>
+    <div class="w-px h-8 bg-border hidden sm:block"></div>
+    <div class="text-center">
+      <p class="stat-num text-2xl">24/7</p>
+      <p class="text-[11px] text-muted font-body mt-0.5">Atención continua</p>
+    </div>
+    <div class="w-px h-8 bg-border hidden sm:block"></div>
+    <div class="text-center">
+      <p class="stat-num text-2xl">3x</p>
+      <p class="text-[11px] text-muted font-body mt-0.5">ROI promedio</p>
+    </div>
+  </div>
+
+  <!-- ── CHAT WIDGET ── -->
+  <div class="hero-4 w-full max-w-2xl relative z-10">
+    <div class="chat-wrap">
+
+      <!-- Header -->
+      <div class="chat-header">
+        <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-robot text-accent text-xs"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-[11px] font-semibold text-light font-body">QUICKSY · Asistente de ventas</p>
+          <p class="text-[10px] text-muted flex items-center gap-1 leading-none mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-accent dot-pulse inline-block"></span>En línea ahora
+          </p>
+        </div>
+        <!-- Mac dots -->
+        <div class="flex gap-1.5">
+          <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-[#28ca41]"></div>
+        </div>
+      </div>
+
+      <!-- Messages feed -->
+      <div class="chat-messages" id="messagesFeed">
+        <div class="flex items-end gap-2.5" id="greetRow">
+          <div class="w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0 mb-0.5">
+            <i class="fa-solid fa-robot text-accent text-[10px]"></i>
+          </div>
+          <div class="bot-bubble">
+            ¡Hola! Soy QUICKSY, el estratega digital de la agencia. Cuéntame cuál es tu mayor reto en ventas o atención al cliente y te diré exactamente cómo lo resolvemos. 👇
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="chat-footer">
+        <!-- Chips -->
+        <div class="flex flex-wrap gap-1.5 mb-3" id="chipsRow">
+          <button class="chip" onclick="useChip(this)"><i class="fa-brands fa-whatsapp" style="color:#25D366"></i>Pierdo horas en WhatsApp</button>
+          <button class="chip" onclick="useChip(this)"><i class="fa-solid fa-filter" style="color:#00e5a0;opacity:.7"></i>Prospectos no calificados</button>
+          <button class="chip" onclick="useChip(this)"><i class="fa-regular fa-calendar-check" style="color:#00e5a0;opacity:.7"></i>Automatizar citas</button>
+        </div>
+        <!-- Input -->
+        <div class="chat-input-row">
+          <i class="fa-regular fa-comment-dots text-muted text-sm flex-shrink-0"></i>
+          <input type="text" id="chatInput"
+                 placeholder="Escribe tu problema aquí..."
+                 autocomplete="off"
+                 onkeydown="handleKey(event)" />
+          <button class="btn-send" id="sendBtn" onclick="sendMessage()" aria-label="Enviar">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <p class="text-center text-[10px] text-muted/45 mt-2 font-body">
+      Powered by Llama 3.1 · Groq · QUICKSY-Go Engine
+    </p>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     SOLUCIONES
+════════════════════════════════════════════ -->
+<section id="soluciones" class="sec-divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="text-center mb-14 reveal">
+      <p class="eyebrow mb-3">Soluciones</p>
+      <h2 class="section-title text-3xl md:text-4xl mb-4">Todo lo que tu empresa<br/>necesita, automatizado.</h2>
+      <p class="text-muted text-sm font-body max-w-md mx-auto">
+        Módulos de IA que se integran en tus canales actuales — sin cambiar tu stack tecnológico.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <div class="sol-card reveal reveal-d1">
+        <div class="sol-icon"><i class="fa-solid fa-robot"></i></div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Calificación Automática</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          El bot entrevista al prospecto, detecta presupuesto, urgencia y autoridad de decisión antes de que tu equipo dedique un minuto.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> WhatsApp · Web · Instagram
+        </div>
+      </div>
+
+      <div class="sol-card reveal reveal-d2">
+        <div class="sol-icon"><i class="fa-regular fa-calendar-check"></i></div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Agenda sin Fricción</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Integración con tu calendario. El bot ofrece slots disponibles, confirma la cita y envía recordatorios automáticos. Tasa de no-show reducida al mínimo.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> Google Cal · Calendly · Outlook
+        </div>
+      </div>
+
+      <div class="sol-card grad-border reveal reveal-d3">
+        <div class="sol-icon" style="background:rgba(0,229,160,.11);border-color:rgba(0,229,160,.24)">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div class="flex items-center gap-1.5 mb-2.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent dot-pulse"></span>
+          <span class="text-[9px] text-accent font-body font-medium tracking-widest uppercase">Destacado</span>
+        </div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Agente Multi-Canal</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Un solo cerebro de IA desplegado en WhatsApp, tu web y email — con memoria conversacional compartida entre canales.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> Contexto persistente · Multi-agente
+        </div>
+      </div>
+
+      <div class="sol-card reveal reveal-d1">
+        <div class="sol-icon"><i class="fa-solid fa-filter"></i></div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Pipeline Inteligente</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Cada prospecto entra clasificado al CRM con un score de calidad. Tu equipo solo ve leads listos para cerrar.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> HubSpot · Pipedrive · Notion
+        </div>
+      </div>
+
+      <div class="sol-card reveal reveal-d2">
+        <div class="sol-icon"><i class="fa-solid fa-headset"></i></div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Soporte 24/7 sin Equipo</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          FAQ avanzada con IA generativa. Responde dudas técnicas, de precios y de proceso con precisión quirúrgica, a cualquier hora.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> Cero tiempo de respuesta
+        </div>
+      </div>
+
+      <div class="sol-card reveal reveal-d3">
+        <div class="sol-icon"><i class="fa-solid fa-chart-bar"></i></div>
+        <h3 class="font-display font-bold text-[15px] text-light mb-2">Analítica de Conversiones</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Dashboard con métricas de conversación: tasa de calificación, tiempo de respuesta y cuellos de botella en el funnel.
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-[10px] text-muted/55 font-body">
+          <i class="fa-solid fa-circle-check text-accent/45 text-xs"></i> Reportes semanales automáticos
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     PROCESO
+════════════════════════════════════════════ -->
+<section id="proceso" class="sec-divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="text-center mb-14 reveal">
+      <p class="eyebrow mb-3">Cómo funciona</p>
+      <h2 class="section-title text-3xl md:text-4xl mb-4">De problema a solución<br/>en 3 pasos.</h2>
+      <p class="text-muted text-sm font-body max-w-xs mx-auto">Sin semanas de implementación. Sin cambios estructurales. Solo resultados.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+
+      <div class="glass p-7 relative reveal reveal-d1">
+        <div class="step-num mb-3">01</div>
+        <div class="w-10 h-10 rounded-xl bg-accent/07 border border-accent/14 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-magnifying-glass text-accent text-sm"></i>
+        </div>
+        <h3 class="font-display font-bold text-[17px] text-light mb-2">Diagnóstico de Flujo</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Analizamos tus procesos actuales de ventas y atención. Identificamos exactamente dónde se pierde tiempo y dinero — en menos de 48 horas.
+        </p>
+        <div class="hidden md:block step-connector"></div>
+      </div>
+
+      <div class="glass p-7 relative reveal reveal-d2">
+        <div class="step-num mb-3">02</div>
+        <div class="w-10 h-10 rounded-xl bg-accent/07 border border-accent/14 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-microchip text-accent text-sm"></i>
+        </div>
+        <h3 class="font-display font-bold text-[17px] text-light mb-2">Arquitectura de IA</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Diseñamos e implementamos los agentes conversacionales a medida de tu industria, tono de marca y reglas de negocio. Sin templates genéricos.
+        </p>
+        <div class="hidden md:block step-connector"></div>
+      </div>
+
+      <div class="glass p-7 reveal reveal-d3">
+        <div class="step-num mb-3">03</div>
+        <div class="w-10 h-10 rounded-xl bg-accent/07 border border-accent/14 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-rocket text-accent text-sm"></i>
+        </div>
+        <h3 class="font-display font-bold text-[17px] text-light mb-2">Deploy y Escala</h3>
+        <p class="text-xs text-muted font-body leading-relaxed">
+          Activamos el sistema, medimos resultados en la primera semana y ajustamos en tiempo real. Tu equipo solo gestiona lo que la IA no puede cerrar sola.
+        </p>
+      </div>
+
+    </div>
+
+    <div class="text-center mt-12 reveal">
+      <a href="https://wa.me/5215647345864" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2.5 bg-accent text-bg font-display font-bold text-sm px-7 py-3.5 rounded-2xl hover:bg-accenth transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-accent/20">
+        <i class="fa-brands fa-whatsapp text-base"></i>
+        Solicitar diagnóstico gratuito
+        <i class="fa-solid fa-arrow-right text-xs"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     TESTIMONIOS
+════════════════════════════════════════════ -->
+<section id="testimonios" class="sec-divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="flex items-end justify-between mb-12 flex-wrap gap-4 reveal">
+      <div>
+        <p class="eyebrow mb-2">Clientes</p>
+        <h2 class="section-title text-3xl md:text-4xl">Resultados reales.</h2>
+      </div>
+      <p class="text-muted text-xs font-body max-w-xs text-right">Empresas B2B que ya operan con inteligencia artificial.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+      <div class="t-card reveal reveal-d1">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="t-avatar"><i class="fa-solid fa-building-columns text-xs"></i></div>
+          <div>
+            <p class="text-[13px] font-semibold text-light font-body leading-tight">Firma Legal Olvera</p>
+            <p class="text-[11px] text-muted">Abogados Corporativos · CDMX</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-[11px] mb-3">
+          <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+        </div>
+        <p class="text-xs text-muted font-body leading-relaxed italic">
+          "Redujimos el tiempo de calificación de leads en un 70%. El bot filtra automáticamente los casos que no son de nuestra competencia. Nadie de nuestro equipo pierde tiempo en prospectos que no califican."
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-accent/50 text-[10px]"></i>
+          <span class="text-[10px] text-muted/55 font-body">Cliente verificado · 4 meses</span>
+        </div>
+      </div>
+
+      <div class="t-card grad-border reveal reveal-d2">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="t-avatar"><i class="fa-solid fa-house-chimney text-xs"></i></div>
+          <div>
+            <p class="text-[13px] font-semibold text-light font-body leading-tight">Agencia Inmobiliaria Nexo</p>
+            <p class="text-[11px] text-muted">Bienes Raíces Premium · GDL</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-[11px] mb-3">
+          <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+        </div>
+        <p class="text-xs text-muted font-body leading-relaxed italic">
+          "Las citas ahora se agendan solas. Nuestro equipo solo recibe notificaciones de prospectos con capacidad de compra real. Cerramos 3x más operaciones al mes con el mismo equipo comercial."
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-accent/50 text-[10px]"></i>
+          <span class="text-[10px] text-muted/55 font-body">Cliente verificado · 6 meses</span>
+        </div>
+      </div>
+
+      <div class="t-card reveal reveal-d3">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="t-avatar"><i class="fa-solid fa-chart-line text-xs"></i></div>
+          <div>
+            <p class="text-[13px] font-semibold text-light font-body leading-tight">Consultora Vértice MX</p>
+            <p class="text-[11px] text-muted">Asesoría Financiera · MTY</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 text-amber-400 text-[11px] mb-3">
+          <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i>
+        </div>
+        <p class="text-xs text-muted font-body leading-relaxed italic">
+          "La IA clasifica y responde consultas sobre impuestos mientras dormimos. Increíble ROI desde el día uno. El sistema se pagó solo en el primer mes de operación."
+        </p>
+        <div class="mt-4 pt-3 border-t border-border flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-accent/50 text-[10px]"></i>
+          <span class="text-[10px] text-muted/55 font-body">Cliente verificado · 3 meses</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     CONTACTO
+════════════════════════════════════════════ -->
+<section id="contacto" class="sec-divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+    <div class="glass-strong rounded-2xl p-10 md:p-14 text-center relative overflow-hidden">
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div style="width:500px;height:280px;background:radial-gradient(ellipse,rgba(0,229,160,.065) 0%,transparent 70%);filter:blur(44px);"></div>
+      </div>
+      <p class="eyebrow mb-4 relative z-10">Contacto directo</p>
+      <h2 class="section-title text-3xl md:text-4xl mb-3 relative z-10 reveal">Hablemos de tu operación.</h2>
+      <p class="text-muted text-sm font-body max-w-sm mx-auto mb-10 relative z-10 reveal">
+        Sin formularios interminables. Elige tu canal y un estratega te contacta en menos de 24 h.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-4 relative z-10 reveal">
+        <a href="https://www.linkedin.com/in/quicksy-go" target="_blank" rel="noopener" class="pill-btn pill-linkedin">
+          <i class="fa-brands fa-linkedin text-sm"></i>LinkedIn
+        </a>
+        <a href="https://wa.me/5215647345864" target="_blank" rel="noopener" class="pill-btn pill-whatsapp">
+          <i class="fa-brands fa-whatsapp text-sm"></i>WhatsApp
+        </a>
+        <a href="mailto:quicksygo@gmail.com" class="pill-btn pill-gmail">
+          <i class="fa-solid fa-envelope text-sm"></i>Gmail
+        </a>
+      </div>
+      <p class="text-muted/35 text-[10px] mt-8 font-body relative z-10">Sin spam · Sin bots de contacto · Solo personas reales.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     EQUIPO
+════════════════════════════════════════════ -->
+<section id="equipo" class="sec-divider px-5 py-24">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="mb-4 reveal">
+      <p class="eyebrow mb-3">Sobre Nosotros</p>
+      <h2 class="section-title text-3xl md:text-4xl mb-3">Nuestro proyecto.</h2>
+      <p class="text-muted text-sm font-body max-w-xl leading-relaxed">
+        Construimos la infraestructura de IA conversacional para empresas de alto valor. La simbiosis perfecta entre conocimiento de negocios y código de producción.
+      </p>
+    </div>
+    <div class="mt-4 mb-12 h-px bg-gradient-to-r from-accent/30 via-accent/08 to-transparent reveal"></div>
+    <h3 class="font-display font-bold text-base text-subtle mb-8 reveal">Equipo</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- Braulio -->
+      <div class="t-card flex flex-col sm:flex-row gap-5 reveal reveal-d1">
+        <div class="profile-photo mx-auto sm:mx-0">
+          <img src="braulio.jpg" alt="Braulio Bonilla Cadena" class="w-full h-full object-cover"
+               onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'fa-solid fa-user text-3xl\' style=\'color:#52526a;opacity:.35\'></i>'">
+        </div>
+        <div class="flex-1 min-w-0 text-center sm:text-left">
+          <p class="font-display font-bold text-[15px] text-light mb-0.5">Braulio Bonilla Cadena</p>
+          <p class="text-accent text-[11px] font-body mb-3">CEO & Lead Automation Architect</p>
+          <p class="text-[11px] text-muted font-body leading-relaxed mb-4">
+            Especialista en estructuración de datos y estrategia B2B. Experiencia gerencial en Estrategia Comercial (Totalplay), estudios de Derecho en la UNAM y certificaciones en Data Analytics/Science por Google e IBM. Diseña flujos comerciales que entienden el compliance corporativo y el valor real del tiempo facturable.
+          </p>
+          <div class="flex gap-2 justify-center sm:justify-start">
+            <a href="https://www.linkedin.com/in/braulio-bonilla-c" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="https://www.tiktok.com/@braulio_bc_" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-tiktok"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Egan -->
+      <div class="t-card flex flex-col sm:flex-row gap-5 reveal reveal-d2">
+        <div class="profile-photo mx-auto sm:mx-0">
+          <img src="egan.jpeg" alt="Egan Salí" class="w-full h-full object-cover"
+               onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'fa-solid fa-user text-3xl\' style=\'color:#52526a;opacity:.35\'></i>'">
+        </div>
+        <div class="flex-1 min-w-0 text-center sm:text-left">
+          <p class="font-display font-bold text-[15px] text-light mb-0.5">Egan Salí</p>
+          <p class="text-accent text-[11px] font-body mb-3">Estratega Financiero & Optimización Fiscal</p>
+          <p class="text-[11px] text-muted font-body leading-relaxed mb-4">
+            Dual-degree en Contabilidad y Administración. Especialista en análisis contable profundo y diseño de estrategias de optimización fiscal de alta precisión. Combina la rigurosidad analítica con visión administrativa para crear estructuras financieras que maximizan márgenes y potencian modelos FinTech y Tech.
+          </p>
+          <div class="flex gap-2 justify-center sm:justify-start">
+            <a href="#" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="#" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-whatsapp"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Miriam -->
+      <div class="t-card flex flex-col sm:flex-row gap-5 reveal reveal-d1">
+        <div class="profile-photo mx-auto sm:mx-0">
+          <img src="miriam.jpeg" alt="Miriam Quezada" class="w-full h-full object-cover"
+               onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'fa-solid fa-user text-3xl\' style=\'color:#52526a;opacity:.35\'></i>'">
+        </div>
+        <div class="flex-1 min-w-0 text-center sm:text-left">
+          <p class="font-display font-bold text-[15px] text-light mb-0.5">Miriam Quezada</p>
+          <p class="text-accent text-[11px] font-body mb-3">Senior Fullstack Engineer & Technical Lead</p>
+          <p class="text-[11px] text-muted font-body leading-relaxed mb-4">
+            Desarrolladora Fullstack con 7 años de experiencia y trayectoria en Oracle. Especialista en arquitecturas Java y JavaScript. Con dominio algorítmico y matemático excepcional, asegura que la infraestructura de QUICKSY-Go sea robusta, escalable y lista para la operación corporativa de alto nivel.
+          </p>
+          <div class="flex gap-2 justify-center sm:justify-start">
+            <a href="https://www.linkedin.com/in/miryqa/" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="https://wa.me/5215647345864" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-whatsapp"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Elizabeth AI -->
+      <div class="t-card grad-border flex flex-col sm:flex-row gap-5 reveal reveal-d2">
+        <div class="profile-photo mx-auto sm:mx-0">
+          <div class="w-full h-full flex items-center justify-center" style="background:rgba(0,229,160,.04)">
+            <i class="fa-solid fa-microchip text-3xl dot-pulse" style="color:rgba(0,229,160,.7)"></i>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0 text-center sm:text-left">
+          <div class="flex items-center gap-2 justify-center sm:justify-start mb-0.5">
+            <p class="font-display font-bold text-[15px] text-light">Elizabeth</p>
+            <span class="text-[9px] border rounded-full px-1.5 py-0.5 font-body font-medium" style="background:rgba(0,229,160,.08);color:#00e5a0;border-color:rgba(0,229,160,.2)">IA · 24/7</span>
+          </div>
+          <p class="text-accent text-[11px] font-body mb-3">Core AI & Operaciones WhatsApp</p>
+          <p class="text-[11px] text-muted font-body leading-relaxed mb-4">
+            Sistema multi-agente autónomo. Mientras QUICKSY atiende el primer contacto en esta web, Elizabeth gestiona el enrutamiento complejo, el análisis de datos y la atención directa en WhatsApp. Opera 24/7 sin descanso, asegurando que ningún prospecto de alto valor se enfríe.
+          </p>
+          <div class="flex gap-2 justify-center sm:justify-start">
+            <a href="https://wa.me/5215647345864" target="_blank" rel="noopener"
+               class="soc-icon" style="border-color:rgba(37,211,102,.25);color:#25D366">
+              <i class="fa-brands fa-whatsapp"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════ -->
+<footer class="sec-divider py-8 px-5">
+  <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
+    <a href="#" class="flex items-center gap-2 group">
+      <div class="w-7 h-7 group-hover:scale-110 transition-transform duration-200">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M85 15L15 15L15 85L40 85L50 95L50 85L85 85L85 15Z" fill="#00e5a0" opacity=".75"/>
+          <path d="M65 30L70 30L70 35L65 35ZM60 25L65 25L65 30L60 30ZM55 20L60 20L60 25L55 25ZM65 20L80 20L80 35L65 35Z" fill="#070709"/>
+          <path d="M35 70L30 70L30 65L35 65ZM40 75L35 75L35 70L40 70ZM45 80L40 80L40 75L45 75ZM35 80L20 80L20 65L35 65Z" fill="#070709"/>
+        </svg>
+      </div>
+      <span class="font-display font-bold text-[13px] text-light/65">QUICKSY<span class="text-accent/75">-Go</span></span>
+    </a>
+    <p class="text-muted/45 text-[11px] text-center font-body">Derechos reservados QUICKSY-Go 2026.</p>
+    <div class="flex gap-2.5">
+      <a href="https://www.linkedin.com/in/quicksy-go" target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-linkedin-in"></i></a>
+      <a href="https://wa.me/5215647345864"            target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-whatsapp"></i></a>
+      <a href="https://www.tiktok.com/@braulio_bc_"    target="_blank" rel="noopener" class="soc-icon"><i class="fa-brands fa-tiktok"></i></a>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+<script>
+  /* ══════════════════════════════════════════
+     CONFIG — URL DE RENDER CONECTADA
+  ══════════════════════════════════════════ */
+  const BACKEND_URL = 'https://quicsy-go-web.onrender.com/chat';
+  const WA_LINK     = 'https://wa.me/5215647345864';
+
+  /* ══════════════════════════════════════════
+     MOBILE MENU
+  ══════════════════════════════════════════ */
+  const menuBtn    = document.getElementById('menuBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const menuIcon   = document.getElementById('menuIcon');
+
+  menuBtn.addEventListener('click', () => {
+    const hidden = mobileMenu.classList.toggle('hidden');
+    menuIcon.className = hidden ? 'fa-solid fa-bars' : 'fa-solid fa-xmark';
+  });
+  function closeMobileMenu() {
+    mobileMenu.classList.add('hidden');
+    menuIcon.className = 'fa-solid fa-bars';
+  }
+
+  /* ══════════════════════════════════════════
+     CHAT STATE
+  ══════════════════════════════════════════ */
+  const feed      = document.getElementById('messagesFeed');
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn   = document.getElementById('sendBtn');
+  const greetRow  = document.getElementById('greetRow');
+  const chipsRow  = document.getElementById('chipsRow');
+
+  let chatHistory  = [];   // full conversation memory
+  let isProcessing = false;
+  let greetHidden  = false;
+
+  /* ── helpers ── */
+  function scrollToBottom() {
+    requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
+  }
+
+  function lockUI() {
+    isProcessing = true;
+    sendBtn.disabled = true;
+    chatInput.disabled = true;
+  }
+
+  function unlockUI() {
+    isProcessing = false;
+    sendBtn.disabled = false;
+    chatInput.disabled = false;
+    chatInput.focus();
+  }
+
+  /* ── append bubble ── */
+  function appendBubble(text, isUser) {
+    const row = document.createElement('div');
+    row.className = 'flex items-end gap-2.5 ' + (isUser ? 'justify-end' : '');
+
+    if (!isUser) {
+      row.innerHTML = `
+        <div class="w-7 h-7 rounded-lg flex-shrink-0 mb-0.5 flex items-center justify-center"
+             style="background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.18)">
+          <i class="fa-solid fa-robot text-[10px]" style="color:#00e5a0"></i>
+        </div>`;
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = isUser ? 'user-bubble' : 'bot-bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    feed.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  /* ── typing indicator ── */
+  function showTyping() {
+    const row = document.createElement('div');
+    row.className = 'flex items-end gap-2.5';
+    row.innerHTML = `
+      <div class="w-7 h-7 rounded-lg flex-shrink-0 mb-0.5 flex items-center justify-center"
+           style="background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.18)">
+        <i class="fa-solid fa-robot text-[10px]" style="color:#00e5a0"></i>
+      </div>
+      <div class="bot-bubble flex items-center" style="padding:.55rem .85rem;">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>`;
+    feed.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  /* ── WhatsApp CTA injection ── */
+  function injectWAButton() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex items-center pl-9';
+    wrapper.style.marginTop = '-.2rem';
+    wrapper.innerHTML = `
+      <a href="${WA_LINK}" target="_blank" rel="noopener" class="wa-inject-btn">
+        <i class="fa-brands fa-whatsapp" style="font-size:1rem"></i>
+        Sí, hablar con Elizabeth ahora
+        <i class="fa-solid fa-arrow-right" style="font-size:.65rem;opacity:.8"></i>
+      </a>`;
+    feed.appendChild(wrapper);
+    scrollToBottom();
+  }
+
+  /* ══════════════════════════════════════════
+     MAIN SEND — calls Render backend
+  ══════════════════════════════════════════ */
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text || isProcessing) return;
+
+    lockUI();
+    chatInput.value = '';
+
+    if (!greetHidden) {
+      greetRow.style.display = 'none';
+      chipsRow.style.display = 'none';
+      greetHidden = true;
+    }
+
+    appendBubble(text, true);
+    chatHistory.push({ role: 'user', content: text });
+    const typingRow = showTyping();
+
+    try {
+      const res = await fetch(BACKEND_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ messages: chatHistory }),
+      });
+
+      if (typingRow.parentNode === feed) feed.removeChild(typingRow);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP ${res.status}`);
+      }
+
+      const data  = await res.json();
+      const reply = data.reply || 'No obtuve respuesta. Intenta de nuevo.';
+
+      chatHistory.push({ role: 'assistant', content: reply });
+      appendBubble(reply, false);
+      injectWAButton();
+
+    } catch (err) {
+      console.error('[QUICKSY] Backend error:', err);
+      if (typingRow.parentNode === feed) feed.removeChild(typingRow);
+
+      appendBubble(
+        'Mis servidores neuronales están en mantenimiento local. Toca el botón de WhatsApp abajo.',
+        false
+      );
+      injectWAButton();
+    }
+
+    unlockUI();
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function useChip(btn) {
+    if (isProcessing) return;
+    chatInput.value = btn.textContent.trim();
+    sendMessage();
+  }
+
+  /* ══════════════════════════════════════════
+     SCROLL REVEAL
+  ══════════════════════════════════════════ */
+  const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        revealObs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+</script>
+
+</body>
+</html>
+</script>
+
+</body>
+</html>
