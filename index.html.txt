@@ -941,10 +941,11 @@
      JAVASCRIPT
 ════════════════════════════════════════════ -->
 <script>
+<script>
   /* ══════════════════════════════════════════
-     CONFIG — 🔴 REEMPLAZA LA URL DE RENDER
+     CONFIG — URL DE RENDER CONECTADA
   ══════════════════════════════════════════ */
-  const BACKEND_URL = 'https://TU-SERVICIO.onrender.com/chat';
+  const BACKEND_URL = 'https://quicsy-go-web.onrender.com/chat';
   const WA_LINK     = 'https://wa.me/5215647345864';
 
   /* ══════════════════════════════════════════
@@ -1038,7 +1039,6 @@
   /* ── WhatsApp CTA injection ── */
   function injectWAButton() {
     const wrapper = document.createElement('div');
-    // Offset by avatar width so button aligns under bot text
     wrapper.className = 'flex items-center pl-9';
     wrapper.style.marginTop = '-.2rem';
     wrapper.innerHTML = `
@@ -1061,30 +1061,23 @@
     lockUI();
     chatInput.value = '';
 
-    // Hide greeting + chips on first user message
     if (!greetHidden) {
       greetRow.style.display = 'none';
       chipsRow.style.display = 'none';
       greetHidden = true;
     }
 
-    // User bubble
     appendBubble(text, true);
-
-    // Add to conversation memory
     chatHistory.push({ role: 'user', content: text });
-
-    // Show typing
     const typingRow = showTyping();
 
     try {
-      const res = await fetch('https://quicsy-go-web.onrender.com/chat', {
+      const res = await fetch(BACKEND_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ messages: chatHistory }),
       });
 
-      // Remove typing indicator
       if (typingRow.parentNode === feed) feed.removeChild(typingRow);
 
       if (!res.ok) {
@@ -1095,13 +1088,8 @@
       const data  = await res.json();
       const reply = data.reply || 'No obtuve respuesta. Intenta de nuevo.';
 
-      // Save assistant reply to memory
       chatHistory.push({ role: 'assistant', content: reply });
-
-      // Show bot reply
       appendBubble(reply, false);
-
-      // Always inject WhatsApp CTA after bot speaks
       injectWAButton();
 
     } catch (err) {
@@ -1109,7 +1097,7 @@
       if (typingRow.parentNode === feed) feed.removeChild(typingRow);
 
       appendBubble(
-        'Mis sistemas están en mantenimiento. Contacta directamente a Elizabeth por WhatsApp — está en línea ahora.',
+        'Mis servidores neuronales están en mantenimiento local. Toca el botón de WhatsApp abajo.',
         false
       );
       injectWAButton();
@@ -1144,6 +1132,10 @@
   }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
 
   document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+</script>
+
+</body>
+</html>
 </script>
 
 </body>
